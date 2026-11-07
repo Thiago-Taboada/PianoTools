@@ -1,0 +1,33 @@
+.keyboard {
+  position: relative;
+  height: 118px;
+  display: flex;
+  user-select: none;
+}
+
+.white {
+  flex: 1;
+  border: 1px solid #2a261f;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  background: linear-gradient(180deg, #fffaf0, #e8dcc3);
+}
+
+.whiteActive {
+  background: linear-gradient(180deg, #f3d27a, #d4a017);
+}
+
+.black {
+  position: absolute;
+  top: 0;
+  width: 1.35%;
+  height: 62%;
+  border: 0;
+  border-radius: 0 0 4px 4px;
+  background: #141311;
+  z-index: 1;
+}
+
+.blackActive {
+  background: #d4a017;
+}

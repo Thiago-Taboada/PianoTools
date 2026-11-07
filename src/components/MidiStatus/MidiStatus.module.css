@@ -1,0 +1,54 @@
+.row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border-radius: 999px;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: #8d8a82;
+}
+
+.connected .dot {
+  background: #62d68b;
+  box-shadow: 0 0 0 4px rgba(98, 214, 139, 0.16);
+}
+
+.permission-pending .dot,
+.disconnected .dot {
+  background: #e0b34a;
+}
+
+.error .dot,
+.unsupported .dot {
+  background: #e37868;
+}
+
+.select {
+  border: 1px solid var(--line);
+  background: #12110f;
+  color: var(--ink);
+  border-radius: 10px;
+  padding: 0.4rem 0.55rem;
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.message {
+  color: var(--muted);
+  font-size: 0.82rem;
+}

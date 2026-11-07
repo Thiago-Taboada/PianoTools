@@ -1,0 +1,36 @@
+.panel h2 {
+  margin: 0 0 0.65rem;
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.35rem;
+  max-height: 180px;
+  overflow: auto;
+}
+
+.list li {
+  display: grid;
+  grid-template-columns: 72px 1fr auto auto;
+  gap: 0.75rem;
+  font-size: 0.88rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.on {
+  color: #9be7b8;
+}
+
+.off {
+  color: var(--muted);
+}

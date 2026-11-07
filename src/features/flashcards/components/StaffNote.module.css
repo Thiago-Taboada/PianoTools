@@ -1,0 +1,15 @@
+.wrap {
+  display: flex;
+  justify-content: center;
+  min-height: 210px;
+}
+
+.staff {
+  width: 320px;
+  height: 210px;
+}
+
+.staff :global(svg) {
+  width: 100%;
+  height: 100%;
+}
