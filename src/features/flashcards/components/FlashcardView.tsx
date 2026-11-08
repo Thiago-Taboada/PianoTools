@@ -21,10 +21,25 @@ interface FlashcardViewProps {
   session: Session;
 }
 
-function formatPitches(pitches: number[]): string {
+function formatPitches(pitches: number[], separator = ' · '): string {
   return pitches
     .map((pitch) => `${midiToNoteName(pitch)} / ${midiToSolfege(pitch)}`)
-    .join(' · ');
+    .join(separator);
+}
+
+/** Texto de un ejercicio para el feedback: nombre del acorde o la secuencia. */
+function describeExercise(exercise: {
+  label?: string;
+  expectedPitches: number[];
+}): string {
+  if (exercise.label) {
+    return exercise.label;
+  }
+  // Secuencia (o nota única): notas EN ORDEN unidas por flechas.
+  return formatPitches(
+    exercise.expectedPitches,
+    exercise.expectedPitches.length > 1 ? ' → ' : ' · ',
+  );
 }
 
 export function FlashcardView({ session }: FlashcardViewProps) {
@@ -45,6 +60,7 @@ export function FlashcardView({ session }: FlashcardViewProps) {
     setChordQualities,
     phase,
     exercise,
+    seqIndex,
     lastResult,
     results,
     summary,
@@ -132,7 +148,7 @@ export function FlashcardView({ session }: FlashcardViewProps) {
           </div>
         ) : (
           <label className={styles.label}>
-            Notas por ejercicio: {notesPerExercise}
+            Notas en la secuencia: {notesPerExercise}
             <input
               type="range"
               min={MIN_NOTES}
@@ -144,6 +160,9 @@ export function FlashcardView({ session }: FlashcardViewProps) {
                 setNotesPerExercise(Number(event.target.value))
               }
             />
+            <span className={styles.help}>
+              Con más de una nota se tocan en orden, una tras otra (melodía).
+            </span>
           </label>
         )}
         <label
@@ -232,6 +251,8 @@ export function FlashcardView({ session }: FlashcardViewProps) {
                     pitches={exercise.expectedPitches}
                     clef={exercise.clef}
                     zoom={zoom}
+                    playback={exercise.playback}
+                    currentIndex={seqIndex}
                   />
                 </div>
               ) : (
@@ -251,8 +272,7 @@ export function FlashcardView({ session }: FlashcardViewProps) {
                   }
                 >
                   {lastResult.result === 'correct' ? 'Correcto' : 'Incorrecto'} ·{' '}
-                  {lastResult.exercise.label ??
-                    formatPitches(lastResult.exercise.expectedPitches)}
+                  {describeExercise(lastResult.exercise)}
                   {lastResult.result === 'incorrect'
                     ? ` · tocaste ${lastResult.playedPitches
                         .map((pitch) => midiToNoteName(pitch))
@@ -260,7 +280,13 @@ export function FlashcardView({ session }: FlashcardViewProps) {
                     : ''}
                 </span>
               ) : phase === 'waiting' ? (
-                'Toca la nota'
+                exercise &&
+                exercise.playback === 'sequence' &&
+                exercise.expectedPitches.length > 1 ? (
+                  `Nota ${seqIndex + 1} de ${exercise.expectedPitches.length}`
+                ) : (
+                  'Toca la nota'
+                )
               ) : (
                 ' '
               )}

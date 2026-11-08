@@ -1,0 +1,109 @@
+.stage {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  box-shadow: var(--shadow);
+  padding: 1.5rem;
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+}
+
+.paper {
+  position: relative;
+  background: linear-gradient(180deg, #f7f1e4 0%, #efe4cc 100%);
+  border-radius: 20px;
+  padding: 1rem;
+  min-height: 360px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* El overlay cubre todo el .paper y centra su contenido igual que FreeStaff
+   (flex + center), de modo que los mini-SVG de las notas queden superpuestos
+   pixel a pixel sobre el pentagrama de fondo. No captura clics. */
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  pointer-events: none;
+}
+
+.hint {
+  align-self: center;
+  color: #6b6456;
+  font-size: 0.95rem;
+  text-align: center;
+  margin: 0;
+}
+
+/* Capa que apila todos los glyphs centrada como el pentagrama de fondo. Tiene
+   el tamaño base del SVG (620×340) para que los glyphs, con la misma geometría,
+   caigan sobre las líneas correctas. */
+.glyphLayer {
+  position: relative;
+  width: 620px;
+  height: 340px;
+}
+
+/* Cada nota dibujada: ocupa toda la capa (inset:0) para compartir la geometría
+   del stave; se separa en horizontal con --slot * SLOT_WIDTH; hace su propio
+   fade (el borde real del DOM lo decide el timer del hook, esto es solo visual). */
+.glyphWrap {
+  position: absolute;
+  inset: 0;
+  transform: translateX(var(--offset-x, 0));
+  animation: noteFade var(--fade-ms, 3000ms) ease-out forwards;
+  pointer-events: none;
+}
+
+/* Nombre pequeño y discreto bajo la nota (ayuda a aprender). Posicionado bajo
+   el pentagrama; acompaña al glyph porque comparte su translateX de slot. */
+.noteName {
+  position: absolute;
+  top: 250px;
+  left: 70px;
+  width: 2.5rem;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #6b6456;
+  line-height: 1;
+}
+
+@keyframes noteFade {
+  0% {
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glyphWrap {
+    animation-name: noteFadeReduced;
+  }
+
+  @keyframes noteFadeReduced {
+    0%,
+    80% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+}

@@ -1,0 +1,12 @@
+.glyph {
+  width: fit-content;
+  height: fit-content;
+}
+
+/* El mini-SVG se dibuja a tamaño base (620×340), igual que FreeStaff, para que
+   el stave transparente del glyph quede superpuesto pixel a pixel sobre el
+   pentagrama de fondo. El fondo del SVG es transparente, así solo se ve la nota. */
+.glyph :global(svg) {
+  display: block;
+  background: transparent;
+}

@@ -22,3 +22,12 @@ export function matchPitchSet(
     ? 'correct'
     : 'incorrect';
 }
+
+/**
+ * Compara una sola altura esperada contra la tocada. Se usa en la evaluación
+ * en orden de las secuencias (modo `'notes'` con varias notas), nota a nota.
+ * Devuelve 'correct' si coinciden exactamente, si no 'incorrect'.
+ */
+export function matchPitch(expected: number, played: number): MatchResult {
+  return expected === played ? 'correct' : 'incorrect';
+}

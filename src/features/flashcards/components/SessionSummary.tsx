@@ -36,7 +36,9 @@ export function SessionSummary({ summary }: SessionSummaryProps) {
                     (pitch) =>
                       `${midiToNoteName(pitch)} · ${midiToSolfege(pitch)}`,
                   )
-                  .join(' + ')}
+                  .join(
+                    item.exercise.expectedPitches.length > 1 ? ' → ' : ' + ',
+                  )}
             </span>
             <span className={item.result === 'correct' ? styles.ok : styles.bad}>
               {item.result === 'correct' ? 'Correcto' : 'Incorrecto'} · tocaste{' '}

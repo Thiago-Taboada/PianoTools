@@ -82,16 +82,27 @@ function resolveRange(
   return pitchesForClefRange(clef);
 }
 
-function pickDistinctPitches(range: NoteRange, count: number): number[] {
+/**
+ * Elige una SECUENCIA de `count` alturas dentro del rango (orden = orden de
+ * interpretación de la melodía). Se permite repetir notas, pero se evita que
+ * TODAS sean iguales cuando hay más de una nota y el rango tiene variedad.
+ */
+function pickSequencePitches(range: NoteRange, count: number): number[] {
   const span = range.max - range.min + 1;
-  const target = Math.min(count, span);
-  const pool = new Set<number>();
+  const randomPitch = () => range.min + Math.floor(Math.random() * span);
 
-  while (pool.size < target) {
-    pool.add(range.min + Math.floor(Math.random() * span));
+  const pitches = Array.from({ length: count }, randomPitch);
+
+  // Evitar una secuencia de notas todas iguales cuando hay más de una nota.
+  if (count > 1 && span > 1 && pitches.every((pitch) => pitch === pitches[0])) {
+    let replacement = randomPitch();
+    while (replacement === pitches[0]) {
+      replacement = randomPitch();
+    }
+    pitches[pitches.length - 1] = replacement;
   }
 
-  return [...pool].sort((a, b) => a - b);
+  return pitches;
 }
 
 function sameSet(a: number[], b: number[]): boolean {
@@ -100,6 +111,11 @@ function sameSet(a: number[], b: number[]): boolean {
   }
   const setB = new Set(b);
   return a.every((pitch) => setB.has(pitch));
+}
+
+/** Igualdad en ORDEN (para no repetir la secuencia exacta anterior). */
+function sameSequence(a: number[], b: number[]): boolean {
+  return a.length === b.length && a.every((pitch, index) => pitch === b[index]);
 }
 
 function createChordExercise(
@@ -138,6 +154,7 @@ function createChordExercise(
     expectedPitches: chord.pitches,
     clef,
     label: chord.label,
+    playback: 'simultaneous',
   };
 }
 
@@ -153,20 +170,21 @@ export function createExercise(
   const range = resolveRange(options.clefMode, clef, difficulty);
   const count = Math.min(Math.max(options.notesPerExercise, MIN_NOTES), MAX_NOTES);
 
-  let pitches = pickDistinctPitches(range, count);
+  let pitches = pickSequencePitches(range, count);
 
-  // Evitar repetir exactamente el conjunto anterior cuando se pueda.
+  // Evitar repetir exactamente la secuencia anterior (en orden) cuando se pueda.
   if (
     options.avoidPitches &&
-    sameSet(pitches, options.avoidPitches) &&
-    range.max - range.min + 1 > count
+    sameSequence(pitches, options.avoidPitches) &&
+    range.max - range.min + 1 > 1
   ) {
-    pitches = pickDistinctPitches(range, count);
+    pitches = pickSequencePitches(range, count);
   }
 
   return {
     id: crypto.randomUUID(),
     expectedPitches: pitches,
     clef,
+    playback: 'sequence',
   };
 }

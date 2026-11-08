@@ -35,6 +35,15 @@ export interface FlashcardExercise {
   id: string;
   expectedPitches: number[];
   clef: Clef;
+  /**
+   * Modo de reproducción del ejercicio:
+   * - `'sequence'`: las notas se tocan UNA TRAS OTRA en orden (melodía). Es el
+   *   modo del `ExerciseKind` `'notes'` (con N==1 es una secuencia de una nota,
+   *   indistinguible del comportamiento clásico de nota suelta).
+   * - `'simultaneous'`: las notas se tocan a la vez (acorde apilado). Es el modo
+   *   del `ExerciseKind` `'chords'`.
+   */
+  playback: 'sequence' | 'simultaneous';
   /** Nombre del acorde en modo `'chords'`; `undefined` en modo `'notes'`. */
   label?: string;
 }
@@ -44,6 +53,12 @@ export interface ExerciseResult {
   playedPitches: number[];
   result: MatchResult;
   responseMs: number;
+  /**
+   * `true` si hubo al menos un intento incorrecto durante el ejercicio. En
+   * secuencia, un solo fallo deja el resultado final en `'incorrect'` aunque la
+   * secuencia se complete. En simultáneos equivale a `result === 'incorrect'`.
+   */
+  hadError: boolean;
 }
 
 export interface SessionSummary {

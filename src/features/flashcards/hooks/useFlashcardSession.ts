@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { matchPitchSet } from '../../../core/evaluation/NoteMatcher';
+import { matchPitch, matchPitchSet } from '../../../core/evaluation/NoteMatcher';
 import type { NormalizedMidiNote } from '../../../core/midi/types';
 import {
   createExercise,
@@ -40,6 +40,9 @@ export function useFlashcardSession() {
   const [exercise, setExercise] = useState<FlashcardExercise | null>(null);
   const [results, setResults] = useState<ExerciseResult[]>([]);
   const [lastResult, setLastResult] = useState<ExerciseResult | null>(null);
+  // Índice de progreso de la secuencia (nota esperada actual). Se expone a la
+  // UI/teclado para redibujar el resaltado de la nota en curso.
+  const [seqIndex, setSeqIndex] = useState(0);
 
   const startedAtRef = useRef(0);
   const timeoutRef = useRef(0);
@@ -48,6 +51,21 @@ export function useFlashcardSession() {
   const resultsRef = useRef<ExerciseResult[]>([]);
   const answeredRef = useRef(false);
   const pressedSetRef = useRef<Set<number>>(new Set());
+  // Ruta de secuencia: posición actual, marca de fallo y teclas sostenidas.
+  const seqIndexRef = useRef(0);
+  const seqHadErrorRef = useRef(false);
+  const heldSetRef = useRef<Set<number>>(new Set());
+
+  // Reinicia el estado de progreso compartido por ambas rutas (simultánea y
+  // secuencia) al arrancar un ejercicio nuevo.
+  const resetProgress = () => {
+    answeredRef.current = false;
+    pressedSetRef.current = new Set();
+    seqIndexRef.current = 0;
+    seqHadErrorRef.current = false;
+    heldSetRef.current = new Set();
+    setSeqIndex(0);
+  };
 
   const clearAdvanceTimer = () => {
     window.clearTimeout(timeoutRef.current);
@@ -75,8 +93,7 @@ export function useFlashcardSession() {
       exerciseKind,
       chordQualities,
     });
-    answeredRef.current = false;
-    pressedSetRef.current = new Set();
+    resetProgress();
     setResults([]);
     resultsRef.current = [];
     setLastResult(null);
@@ -87,14 +104,50 @@ export function useFlashcardSession() {
 
   const resetSession = useCallback(() => {
     clearAdvanceTimer();
-    answeredRef.current = false;
-    pressedSetRef.current = new Set();
+    resetProgress();
     setResults([]);
     resultsRef.current = [];
     setLastResult(null);
     setExercise(null);
     setPhase('idle');
   }, []);
+
+  // Registra el resultado del ejercicio recién terminado, pasa a `feedback` y
+  // programa el avance al siguiente ejercicio / resumen. Compartido por la ruta
+  // simultánea (acordes) y la de secuencia (notas).
+  const commitResult = useCallback(
+    (previous: FlashcardExercise, result: ExerciseResult) => {
+      answeredRef.current = true;
+
+      const nextResults = [...resultsRef.current, result];
+      resultsRef.current = nextResults;
+      setResults(nextResults);
+      setLastResult(result);
+      setPhase('feedback');
+
+      timeoutRef.current = window.setTimeout(() => {
+        if (nextResults.length >= sessionLength) {
+          setPhase('summary');
+          setExercise(null);
+          return;
+        }
+
+        const nextExercise = createExercise(difficulty, {
+          clefMode,
+          notesPerExercise,
+          exerciseKind,
+          chordQualities,
+          avoidPitches: previous.expectedPitches,
+        });
+        resetProgress();
+        setLastResult(null);
+        setExercise(nextExercise);
+        setPhase('waiting');
+        startedAtRef.current = performance.now();
+      }, FEEDBACK_MS);
+    },
+    [difficulty, sessionLength, clefMode, notesPerExercise, exerciseKind, chordQualities],
+  );
 
   const handleMidiEvent = useCallback(
     (event: NormalizedMidiNote | null) => {
@@ -111,6 +164,58 @@ export function useFlashcardSession() {
         return;
       }
 
+      if (current.playback === 'sequence') {
+        // Ruta de secuencia (modo Notas): evaluación en orden, nota a nota.
+        // Cada note-on es un intento contra la nota esperada actual. Una tecla
+        // mantenida no dispara intentos repetidos; hay que soltarla y volver a
+        // pulsarla (necesario para secuencias con notas repetidas, p. ej.
+        // Do, Do, Re).
+        if (event.type === 'note-off') {
+          heldSetRef.current.delete(event.pitch);
+          return;
+        }
+
+        if (event.type !== 'note-on') {
+          return;
+        }
+
+        if (heldSetRef.current.has(event.pitch)) {
+          return;
+        }
+        heldSetRef.current.add(event.pitch);
+
+        const expectedPitch = current.expectedPitches[seqIndexRef.current];
+        if (matchPitch(expectedPitch, event.pitch) === 'incorrect') {
+          // Fallo: se marca el error y NO se avanza (se repite la misma nota).
+          seqHadErrorRef.current = true;
+          return;
+        }
+
+        // Acierto: avanzar a la siguiente nota de la secuencia.
+        seqIndexRef.current += 1;
+        setSeqIndex(seqIndexRef.current);
+
+        if (seqIndexRef.current < current.expectedPitches.length) {
+          return;
+        }
+
+        // Última nota acertada: el ejercicio se completa. Solo es 'correct' si
+        // no hubo ningún fallo durante toda la secuencia.
+        const result: ExerciseResult = {
+          exercise: current,
+          // Solo se avanza con aciertos, así que las notas tocadas en orden
+          // coinciden con la secuencia esperada.
+          playedPitches: [...current.expectedPitches],
+          result: seqHadErrorRef.current ? 'incorrect' : 'correct',
+          responseMs: performance.now() - startedAtRef.current,
+          hadError: seqHadErrorRef.current,
+        };
+        commitResult(current, result);
+        return;
+      }
+
+      // Ruta simultánea (acordes): se acumulan note-on hasta completar el
+      // conjunto y se evalúa con matchPitchSet.
       // Liberar una nota antes de completar el conjunto permite corregir.
       if (event.type === 'note-off') {
         pressedSetRef.current.delete(event.pitch);
@@ -132,52 +237,18 @@ export function useFlashcardSession() {
       }
 
       const playedPitches = [...pressedSetRef.current].sort((a, b) => a - b);
-      answeredRef.current = true;
+      const matchResult = matchPitchSet(current.expectedPitches, playedPitches);
 
       const result: ExerciseResult = {
         exercise: current,
         playedPitches,
-        result: matchPitchSet(current.expectedPitches, playedPitches),
+        result: matchResult,
         responseMs: performance.now() - startedAtRef.current,
+        hadError: matchResult === 'incorrect',
       };
-
-      const nextResults = [...resultsRef.current, result];
-      resultsRef.current = nextResults;
-      setResults(nextResults);
-      setLastResult(result);
-      setPhase('feedback');
-
-      timeoutRef.current = window.setTimeout(() => {
-        pressedSetRef.current = new Set();
-
-        if (nextResults.length >= sessionLength) {
-          setPhase('summary');
-          setExercise(null);
-          return;
-        }
-
-        const nextExercise = createExercise(difficulty, {
-          clefMode,
-          notesPerExercise,
-          exerciseKind,
-          chordQualities,
-          avoidPitches: current.expectedPitches,
-        });
-        answeredRef.current = false;
-        setLastResult(null);
-        setExercise(nextExercise);
-        setPhase('waiting');
-        startedAtRef.current = performance.now();
-      }, FEEDBACK_MS);
+      commitResult(current, result);
     },
-    [
-      difficulty,
-      sessionLength,
-      clefMode,
-      notesPerExercise,
-      exerciseKind,
-      chordQualities,
-    ],
+    [commitResult],
   );
 
   const summary: SessionSummary | null = useMemo(() => {
@@ -216,6 +287,7 @@ export function useFlashcardSession() {
     setChordQualities,
     phase,
     exercise,
+    seqIndex,
     lastResult,
     results,
     summary,
