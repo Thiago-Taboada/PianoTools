@@ -1,4 +1,5 @@
 import { midiToNoteName, midiToSolfege } from '../../../core/music/pitch';
+import { chordQualities as chordQualityOptions } from '../../../core/music/chords';
 import {
   DEFAULT_SESSION_LENGTH,
   DIFFICULTIES,
@@ -6,7 +7,7 @@ import {
   MAX_NOTES,
   MIN_NOTES,
 } from '../services/exerciseGenerator';
-import type { ClefMode } from '../types';
+import type { ChordQuality, ClefMode, ExerciseKind } from '../types';
 import type { useFlashcardSession } from '../hooks/useFlashcardSession';
 import { useStaffZoom } from '../hooks/useStaffZoom';
 import { SessionSummary } from './SessionSummary';
@@ -37,6 +38,10 @@ export function FlashcardView({ session }: FlashcardViewProps) {
     setNotesPerExercise,
     practiceMode,
     setPracticeMode,
+    exerciseKind,
+    setExerciseKind,
+    chordQualities,
+    setChordQualities,
     phase,
     exercise,
     lastResult,
@@ -49,6 +54,15 @@ export function FlashcardView({ session }: FlashcardViewProps) {
   const busy = phase === 'waiting' || phase === 'feedback';
   const { zoom, zoomIn, zoomOut, canZoomIn, canZoomOut } = useStaffZoom();
   const selectedDifficulty = getDifficulty(difficultyId);
+  const isChords = exerciseKind === 'chords';
+
+  const toggleChordQuality = (id: ChordQuality) => {
+    setChordQualities(
+      chordQualities.includes(id)
+        ? chordQualities.filter((quality) => quality !== id)
+        : [...chordQualities, id],
+    );
+  };
 
   return (
     <div className={styles.layout}>
@@ -75,6 +89,19 @@ export function FlashcardView({ session }: FlashcardViewProps) {
           </span>
         </label>
         <label className={styles.label}>
+          Modo de ejercicio
+          <select
+            value={exerciseKind}
+            disabled={busy}
+            onChange={(event) =>
+              setExerciseKind(event.target.value as ExerciseKind)
+            }
+          >
+            <option value="notes">Notas</option>
+            <option value="chords">Acordes</option>
+          </select>
+        </label>
+        <label className={styles.label}>
           Clave
           <select
             value={clefMode}
@@ -88,27 +115,55 @@ export function FlashcardView({ session }: FlashcardViewProps) {
             <option value="both">Ambas</option>
           </select>
         </label>
-        <label className={styles.label}>
-          Notas por ejercicio: {notesPerExercise}
+        {isChords ? (
+          <div className={styles.label}>
+            Calidades de acorde
+            <div className={styles.qualityList}>
+              {chordQualityOptions().map((option) => (
+                <label key={option.id} className={styles.quality}>
+                  <input
+                    type="checkbox"
+                    disabled={busy}
+                    checked={chordQualities.includes(option.id)}
+                    onChange={() => toggleChordQuality(option.id)}
+                  />
+                  {option.label}
+                </label>
+              ))}
+            </div>
+            <span className={styles.help}>
+              Si no seleccionas ninguna se usan mayor y menor.
+            </span>
+          </div>
+        ) : (
+          <label className={styles.label}>
+            Notas por ejercicio: {notesPerExercise}
+            <input
+              type="range"
+              min={MIN_NOTES}
+              max={MAX_NOTES}
+              step={1}
+              disabled={busy}
+              value={notesPerExercise}
+              onChange={(event) =>
+                setNotesPerExercise(Number(event.target.value))
+              }
+            />
+          </label>
+        )}
+        <label className={styles.switch}>
           <input
-            type="range"
-            min={MIN_NOTES}
-            max={MAX_NOTES}
-            step={1}
-            disabled={busy}
-            value={notesPerExercise}
-            onChange={(event) =>
-              setNotesPerExercise(Number(event.target.value))
-            }
-          />
-        </label>
-        <label className={styles.toggle}>
-          <input
+            className={styles.switchInput}
             type="checkbox"
             checked={practiceMode}
             onChange={(event) => setPracticeMode(event.target.checked)}
           />
-          Modo práctica (resalta teclas y digitación sugerida)
+          <span className={styles.switchTrack}>
+            <span className={styles.switchThumb} />
+          </span>
+          <span className={styles.switchText}>
+            Modo práctica (resalta teclas y digitación sugerida)
+          </span>
         </label>
         <label className={styles.label}>
           Ejercicios por sesión
@@ -172,11 +227,16 @@ export function FlashcardView({ session }: FlashcardViewProps) {
                 </button>
               </div>
               {exercise ? (
-                <StaffNote
-                  pitches={exercise.expectedPitches}
-                  clef={exercise.clef}
-                  zoom={zoom}
-                />
+                <div className={styles.staffWrap}>
+                  {exercise.label ? (
+                    <p className={styles.chordLabel}>{exercise.label}</p>
+                  ) : null}
+                  <StaffNote
+                    pitches={exercise.expectedPitches}
+                    clef={exercise.clef}
+                    zoom={zoom}
+                  />
+                </div>
               ) : (
                 <p className={styles.hint}>
                   Pulsa Empezar para ver una o varias notas en el pentagrama.
@@ -194,7 +254,8 @@ export function FlashcardView({ session }: FlashcardViewProps) {
                   }
                 >
                   {lastResult.result === 'correct' ? 'Correcto' : 'Incorrecto'} ·{' '}
-                  {formatPitches(lastResult.exercise.expectedPitches)}
+                  {lastResult.exercise.label ??
+                    formatPitches(lastResult.exercise.expectedPitches)}
                   {lastResult.result === 'incorrect'
                     ? ` · tocaste ${lastResult.playedPitches
                         .map((pitch) => midiToNoteName(pitch))

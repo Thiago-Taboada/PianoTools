@@ -30,12 +30,13 @@ export function SessionSummary({ summary }: SessionSummaryProps) {
           <li key={item.exercise.id}>
             <span>
               {index + 1}.{' '}
-              {item.exercise.expectedPitches
-                .map(
-                  (pitch) =>
-                    `${midiToNoteName(pitch)} · ${midiToSolfege(pitch)}`,
-                )
-                .join(' + ')}
+              {item.exercise.label ??
+                item.exercise.expectedPitches
+                  .map(
+                    (pitch) =>
+                      `${midiToNoteName(pitch)} · ${midiToSolfege(pitch)}`,
+                  )
+                  .join(' + ')}
             </span>
             <span className={item.result === 'correct' ? styles.ok : styles.bad}>
               {item.result === 'correct' ? 'Correcto' : 'Incorrecto'} · tocaste{' '}

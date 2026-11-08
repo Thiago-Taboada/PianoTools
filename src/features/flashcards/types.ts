@@ -1,5 +1,14 @@
 import type { Clef } from '../../core/music/types';
 import type { MatchResult } from '../../core/evaluation/NoteMatcher';
+import type { ChordQuality } from '../../core/music/chords';
+
+/**
+ * Tipo de ejercicio de flashcards. `'notes'` mantiene el comportamiento actual
+ * (notas sueltas o varias simultáneas). `'chords'` genera acordes con nombre.
+ */
+export type ExerciseKind = 'notes' | 'chords';
+
+export type { ChordQuality };
 
 export type DifficultyId = 'beginner' | 'intermediate' | 'wide';
 
@@ -26,6 +35,8 @@ export interface FlashcardExercise {
   id: string;
   expectedPitches: number[];
   clef: Clef;
+  /** Nombre del acorde en modo `'chords'`; `undefined` en modo `'notes'`. */
+  label?: string;
 }
 
 export interface ExerciseResult {

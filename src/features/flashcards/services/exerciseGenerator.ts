@@ -1,9 +1,12 @@
 import { pitchesForClefRange } from '../../../core/music/pitch';
+import { buildChord, CHORD_INTERVALS } from '../../../core/music/chords';
 import type { Clef } from '../../../core/music/types';
 import type {
+  ChordQuality,
   ClefMode,
   DifficultyId,
   DifficultyOption,
+  ExerciseKind,
   FlashcardExercise,
   NoteRange,
 } from '../types';
@@ -46,6 +49,9 @@ export const DEFAULT_NOTES_PER_EXERCISE = 1;
 export const MIN_NOTES = 1;
 export const MAX_NOTES = 4;
 
+/** Calidades activas por defecto en el modo de acordes. */
+export const DEFAULT_CHORD_QUALITIES: ChordQuality[] = ['major', 'minor'];
+
 export function getDifficulty(id: DifficultyId): DifficultyOption {
   return DIFFICULTIES.find((item) => item.id === id) ?? FALLBACK_DIFFICULTY;
 }
@@ -54,6 +60,8 @@ interface CreateExerciseOptions {
   clefMode: ClefMode;
   notesPerExercise: number;
   avoidPitches?: number[];
+  exerciseKind?: ExerciseKind;
+  chordQualities?: ChordQuality[];
 }
 
 function resolveClef(clefMode: ClefMode): Clef {
@@ -94,10 +102,53 @@ function sameSet(a: number[], b: number[]): boolean {
   return a.every((pitch) => setB.has(pitch));
 }
 
+function createChordExercise(
+  difficulty: DifficultyOption,
+  options: CreateExerciseOptions,
+): FlashcardExercise {
+  const clef = resolveClef(options.clefMode);
+  const range = resolveRange(options.clefMode, clef, difficulty);
+
+  const available =
+    options.chordQualities && options.chordQualities.length > 0
+      ? options.chordQualities
+      : DEFAULT_CHORD_QUALITIES;
+
+  const pickRoot = (quality: ChordQuality): number => {
+    const width = Math.max(...CHORD_INTERVALS[quality]);
+    const rootMax = Math.max(range.min, range.max - width);
+    return range.min + Math.floor(Math.random() * (rootMax - range.min + 1));
+  };
+
+  const pickChord = () => {
+    const quality = available[Math.floor(Math.random() * available.length)];
+    const root = pickRoot(quality);
+    return buildChord(root, quality);
+  };
+
+  let chord = pickChord();
+
+  // Evitar repetir exactamente el acorde anterior cuando se pueda (reintento único).
+  if (options.avoidPitches && sameSet(chord.pitches, options.avoidPitches)) {
+    chord = pickChord();
+  }
+
+  return {
+    id: crypto.randomUUID(),
+    expectedPitches: chord.pitches,
+    clef,
+    label: chord.label,
+  };
+}
+
 export function createExercise(
   difficulty: DifficultyOption,
   options: CreateExerciseOptions,
 ): FlashcardExercise {
+  if (options.exerciseKind === 'chords') {
+    return createChordExercise(difficulty, options);
+  }
+
   const clef = resolveClef(options.clefMode);
   const range = resolveRange(options.clefMode, clef, difficulty);
   const count = Math.min(Math.max(options.notesPerExercise, MIN_NOTES), MAX_NOTES);

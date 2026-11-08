@@ -3,6 +3,7 @@ import { matchPitchSet } from '../../../core/evaluation/NoteMatcher';
 import type { NormalizedMidiNote } from '../../../core/midi/types';
 import {
   createExercise,
+  DEFAULT_CHORD_QUALITIES,
   DEFAULT_NOTES_PER_EXERCISE,
   DEFAULT_SESSION_LENGTH,
   getDifficulty,
@@ -10,8 +11,10 @@ import {
   MIN_NOTES,
 } from '../services/exerciseGenerator';
 import type {
+  ChordQuality,
   ClefMode,
   DifficultyId,
+  ExerciseKind,
   ExerciseResult,
   FlashcardExercise,
   SessionSummary,
@@ -29,6 +32,10 @@ export function useFlashcardSession() {
     DEFAULT_NOTES_PER_EXERCISE,
   );
   const [practiceMode, setPracticeMode] = useState(false);
+  const [exerciseKind, setExerciseKind] = useState<ExerciseKind>('notes');
+  const [chordQualities, setChordQualities] = useState<ChordQuality[]>(
+    DEFAULT_CHORD_QUALITIES,
+  );
   const [phase, setPhase] = useState<SessionPhase>('idle');
   const [exercise, setExercise] = useState<FlashcardExercise | null>(null);
   const [results, setResults] = useState<ExerciseResult[]>([]);
@@ -62,7 +69,12 @@ export function useFlashcardSession() {
 
   const startSession = useCallback(() => {
     clearAdvanceTimer();
-    const next = createExercise(difficulty, { clefMode, notesPerExercise });
+    const next = createExercise(difficulty, {
+      clefMode,
+      notesPerExercise,
+      exerciseKind,
+      chordQualities,
+    });
     answeredRef.current = false;
     pressedSetRef.current = new Set();
     setResults([]);
@@ -71,7 +83,7 @@ export function useFlashcardSession() {
     setExercise(next);
     setPhase('waiting');
     startedAtRef.current = performance.now();
-  }, [difficulty, clefMode, notesPerExercise]);
+  }, [difficulty, clefMode, notesPerExercise, exerciseKind, chordQualities]);
 
   const resetSession = useCallback(() => {
     clearAdvanceTimer();
@@ -147,6 +159,8 @@ export function useFlashcardSession() {
         const nextExercise = createExercise(difficulty, {
           clefMode,
           notesPerExercise,
+          exerciseKind,
+          chordQualities,
           avoidPitches: current.expectedPitches,
         });
         answeredRef.current = false;
@@ -156,7 +170,14 @@ export function useFlashcardSession() {
         startedAtRef.current = performance.now();
       }, FEEDBACK_MS);
     },
-    [difficulty, sessionLength, clefMode, notesPerExercise],
+    [
+      difficulty,
+      sessionLength,
+      clefMode,
+      notesPerExercise,
+      exerciseKind,
+      chordQualities,
+    ],
   );
 
   const summary: SessionSummary | null = useMemo(() => {
@@ -189,6 +210,10 @@ export function useFlashcardSession() {
     setNotesPerExercise,
     practiceMode,
     setPracticeMode,
+    exerciseKind,
+    setExerciseKind,
+    chordQualities,
+    setChordQualities,
     phase,
     exercise,
     lastResult,
