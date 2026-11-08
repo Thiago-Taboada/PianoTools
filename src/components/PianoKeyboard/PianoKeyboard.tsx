@@ -3,6 +3,7 @@ import styles from './PianoKeyboard.module.css';
 
 const START = 48;
 const END = 84;
+const MIDDLE_C = 60;
 
 interface PianoKeyboardProps {
   pressedPitches: number[];
@@ -39,6 +40,21 @@ export function PianoKeyboard({
           .filter(Boolean)
           .join(' ');
         return <div key={pitch} className={classes} />;
+      })}
+      {whiteKeys.map((pitch, index) => {
+        if (pitch !== MIDDLE_C) {
+          return null;
+        }
+        return (
+          <span
+            key="watermark-c4"
+            className={styles.watermark}
+            style={{ left: `${(index + 0.5) * whiteWidth}%` }}
+            aria-hidden="true"
+          >
+            C4
+          </span>
+        );
       })}
       {whiteKeys.map((pitch, index) => {
         if (!targets.has(pitch) || fingers[pitch] == null) {

@@ -40,6 +40,20 @@
   box-shadow: inset 0 0 0 2px #4f9dff;
 }
 
+.watermark {
+  position: absolute;
+  bottom: 24px;
+  transform: translateX(-50%);
+  color: #1b1a17;
+  opacity: 0.35;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  pointer-events: none;
+  z-index: 0;
+}
+
 .finger {
   position: absolute;
   bottom: 6px;

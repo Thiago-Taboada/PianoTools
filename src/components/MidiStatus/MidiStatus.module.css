@@ -38,13 +38,8 @@
   background: #e37868;
 }
 
-.select {
-  border: 1px solid var(--line);
-  background: #12110f;
-  color: var(--ink);
-  border-radius: 10px;
-  padding: 0.4rem 0.55rem;
-  font: inherit;
+.selectWrap {
+  min-width: 12rem;
   font-size: 0.85rem;
 }
 

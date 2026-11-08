@@ -7,7 +7,8 @@ import {
   MAX_NOTES,
   MIN_NOTES,
 } from '../services/exerciseGenerator';
-import type { ChordQuality, ClefMode, ExerciseKind } from '../types';
+import { Select } from '../../../components/Select/Select';
+import type { ChordQuality, ClefMode, DifficultyId, ExerciseKind } from '../types';
 import type { useFlashcardSession } from '../hooks/useFlashcardSession';
 import { useStaffZoom } from '../hooks/useStaffZoom';
 import { SessionSummary } from './SessionSummary';
@@ -69,19 +70,15 @@ export function FlashcardView({ session }: FlashcardViewProps) {
       <aside className={styles.sidebar}>
         <label className={styles.label}>
           Dificultad
-          <select
+          <Select<DifficultyId>
             value={difficultyId}
             disabled={busy}
-            onChange={(event) =>
-              setDifficultyId(event.target.value as typeof difficultyId)
-            }
-          >
-            {DIFFICULTIES.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.label}
-              </option>
-            ))}
-          </select>
+            onChange={setDifficultyId}
+            options={DIFFICULTIES.map((item) => ({
+              value: item.id,
+              label: item.label,
+            }))}
+          />
           <span className={styles.help}>{selectedDifficulty.description}</span>
           <span className={styles.help}>
             El rango aplica en clave de sol; en clave de fa el rango lo decide la
@@ -90,30 +87,28 @@ export function FlashcardView({ session }: FlashcardViewProps) {
         </label>
         <label className={styles.label}>
           Modo de ejercicio
-          <select
+          <Select<ExerciseKind>
             value={exerciseKind}
             disabled={busy}
-            onChange={(event) =>
-              setExerciseKind(event.target.value as ExerciseKind)
-            }
-          >
-            <option value="notes">Notas</option>
-            <option value="chords">Acordes</option>
-          </select>
+            onChange={setExerciseKind}
+            options={[
+              { value: 'notes', label: 'Notas' },
+              { value: 'chords', label: 'Acordes' },
+            ]}
+          />
         </label>
         <label className={styles.label}>
           Clave
-          <select
+          <Select<ClefMode>
             value={clefMode}
             disabled={busy}
-            onChange={(event) =>
-              setClefMode(event.target.value as ClefMode)
-            }
-          >
-            <option value="treble">Clave de sol</option>
-            <option value="bass">Clave de fa</option>
-            <option value="both">Ambas</option>
-          </select>
+            onChange={setClefMode}
+            options={[
+              { value: 'treble', label: 'Clave de sol' },
+              { value: 'bass', label: 'Clave de fa' },
+              { value: 'both', label: 'Ambas' },
+            ]}
+          />
         </label>
         {isChords ? (
           <div className={styles.label}>
@@ -151,19 +146,21 @@ export function FlashcardView({ session }: FlashcardViewProps) {
             />
           </label>
         )}
-        <label className={styles.switch}>
+        <label
+          className={styles.switch}
+          title="Resalta las teclas y la digitación sugerida"
+        >
           <input
             className={styles.switchInput}
             type="checkbox"
+            aria-label="Modo práctica: resalta las teclas y la digitación sugerida"
             checked={practiceMode}
             onChange={(event) => setPracticeMode(event.target.checked)}
           />
           <span className={styles.switchTrack}>
             <span className={styles.switchThumb} />
           </span>
-          <span className={styles.switchText}>
-            Modo práctica (resalta teclas y digitación sugerida)
-          </span>
+          <span className={styles.switchText}>Modo práctica</span>
         </label>
         <label className={styles.label}>
           Ejercicios por sesión

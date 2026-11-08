@@ -143,11 +143,10 @@
   line-height: 1.35;
 }
 
-.label select,
 .label input {
   width: 100%;
   border: 1px solid var(--line);
-  background: #12110f;
+  background-color: #12110f;
   color: var(--ink);
   border-radius: 12px;
   padding: 0.65rem 0.75rem;

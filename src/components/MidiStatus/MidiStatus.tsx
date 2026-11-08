@@ -1,4 +1,5 @@
 import type { MidiConnectionStatus, MidiDeviceOption } from '../../core/midi/types';
+import { Select } from '../Select/Select';
 import styles from './MidiStatus.module.css';
 
 const STATUS_LABEL: Record<MidiConnectionStatus, string> = {
@@ -31,18 +32,17 @@ export function MidiStatus({
         {STATUS_LABEL[status]}
       </span>
       {devices.length > 0 ? (
-        <select
-          className={styles.select}
-          value={selectedDeviceId ?? ''}
-          onChange={(event) => onSelectDevice(event.target.value)}
-          aria-label="Dispositivo MIDI de entrada"
-        >
-          {devices.map((device) => (
-            <option key={device.id} value={device.id}>
-              {device.name}
-            </option>
-          ))}
-        </select>
+        <div className={styles.selectWrap}>
+          <Select<string>
+            value={selectedDeviceId ?? ''}
+            onChange={onSelectDevice}
+            aria-label="Dispositivo MIDI de entrada"
+            options={devices.map((device) => ({
+              value: device.id,
+              label: device.name,
+            }))}
+          />
+        </div>
       ) : null}
       {errorMessage ? <span className={styles.message}>{errorMessage}</span> : null}
     </div>
