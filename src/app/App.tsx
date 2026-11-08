@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { suggestFingerings } from '../core/music/pitch';
 import { IncomingNotes } from '../components/IncomingNotes/IncomingNotes';
 import { MidiStatus } from '../components/MidiStatus/MidiStatus';
 import { PianoKeyboard } from '../components/PianoKeyboard/PianoKeyboard';
@@ -13,6 +14,18 @@ export default function App() {
   const [mode, setMode] = useState<AppMode>('flashcards');
   const session = useFlashcardSession();
   const midi = useMidiInput(session.handleMidiEvent);
+
+  const practiceActive =
+    mode === 'flashcards' && session.practiceMode && session.exercise !== null;
+  const targetPitches = practiceActive
+    ? session.exercise!.expectedPitches
+    : undefined;
+  const fingerings = practiceActive
+    ? suggestFingerings(
+        session.exercise!.expectedPitches,
+        session.exercise!.clef,
+      )
+    : undefined;
 
   return (
     <div className={styles.shell}>
@@ -69,7 +82,11 @@ export default function App() {
 
       <footer className={styles.footer}>
         <div className={styles.footerMain}>
-          <PianoKeyboard pressedPitches={midi.pressedPitches} />
+          <PianoKeyboard
+            pressedPitches={midi.pressedPitches}
+            targetPitches={targetPitches}
+            fingerings={fingerings}
+          />
           <IncomingNotes notes={midi.recentNotes} />
         </div>
       </footer>

@@ -1,12 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { matchPitch } from '../../../core/evaluation/NoteMatcher';
+import { matchPitchSet } from '../../../core/evaluation/NoteMatcher';
 import type { NormalizedMidiNote } from '../../../core/midi/types';
 import {
   createExercise,
+  DEFAULT_NOTES_PER_EXERCISE,
   DEFAULT_SESSION_LENGTH,
   getDifficulty,
+  MAX_NOTES,
+  MIN_NOTES,
 } from '../services/exerciseGenerator';
 import type {
+  ClefMode,
   DifficultyId,
   ExerciseResult,
   FlashcardExercise,
@@ -20,6 +24,11 @@ const FEEDBACK_MS = 900;
 export function useFlashcardSession() {
   const [difficultyId, setDifficultyId] = useState<DifficultyId>('beginner');
   const [sessionLength, setSessionLength] = useState(DEFAULT_SESSION_LENGTH);
+  const [clefMode, setClefMode] = useState<ClefMode>('treble');
+  const [notesPerExercise, setNotesPerExerciseState] = useState(
+    DEFAULT_NOTES_PER_EXERCISE,
+  );
+  const [practiceMode, setPracticeMode] = useState(false);
   const [phase, setPhase] = useState<SessionPhase>('idle');
   const [exercise, setExercise] = useState<FlashcardExercise | null>(null);
   const [results, setResults] = useState<ExerciseResult[]>([]);
@@ -31,6 +40,7 @@ export function useFlashcardSession() {
   const exerciseRef = useRef<FlashcardExercise | null>(null);
   const resultsRef = useRef<ExerciseResult[]>([]);
   const answeredRef = useRef(false);
+  const pressedSetRef = useRef<Set<number>>(new Set());
 
   const clearAdvanceTimer = () => {
     window.clearTimeout(timeoutRef.current);
@@ -44,21 +54,29 @@ export function useFlashcardSession() {
 
   const difficulty = useMemo(() => getDifficulty(difficultyId), [difficultyId]);
 
+  const setNotesPerExercise = useCallback((value: number) => {
+    setNotesPerExerciseState(
+      Math.min(MAX_NOTES, Math.max(MIN_NOTES, Math.round(value) || MIN_NOTES)),
+    );
+  }, []);
+
   const startSession = useCallback(() => {
     clearAdvanceTimer();
-    const next = createExercise(difficulty);
+    const next = createExercise(difficulty, { clefMode, notesPerExercise });
     answeredRef.current = false;
+    pressedSetRef.current = new Set();
     setResults([]);
     resultsRef.current = [];
     setLastResult(null);
     setExercise(next);
     setPhase('waiting');
     startedAtRef.current = performance.now();
-  }, [difficulty]);
+  }, [difficulty, clefMode, notesPerExercise]);
 
   const resetSession = useCallback(() => {
     clearAdvanceTimer();
     answeredRef.current = false;
+    pressedSetRef.current = new Set();
     setResults([]);
     resultsRef.current = [];
     setLastResult(null);
@@ -68,7 +86,7 @@ export function useFlashcardSession() {
 
   const handleMidiEvent = useCallback(
     (event: NormalizedMidiNote | null) => {
-      if (!event || event.type !== 'note-on') {
+      if (!event) {
         return;
       }
 
@@ -81,11 +99,33 @@ export function useFlashcardSession() {
         return;
       }
 
+      // Liberar una nota antes de completar el conjunto permite corregir.
+      if (event.type === 'note-off') {
+        pressedSetRef.current.delete(event.pitch);
+        return;
+      }
+
+      if (event.type !== 'note-on') {
+        return;
+      }
+
+      // Una nota mantenida (ya presente) no cuenta como varias respuestas.
+      if (pressedSetRef.current.has(event.pitch)) {
+        return;
+      }
+      pressedSetRef.current.add(event.pitch);
+
+      if (pressedSetRef.current.size < current.expectedPitches.length) {
+        return;
+      }
+
+      const playedPitches = [...pressedSetRef.current].sort((a, b) => a - b);
       answeredRef.current = true;
+
       const result: ExerciseResult = {
         exercise: current,
-        playedPitch: event.pitch,
-        result: matchPitch(current.expectedPitch, event.pitch),
+        playedPitches,
+        result: matchPitchSet(current.expectedPitches, playedPitches),
         responseMs: performance.now() - startedAtRef.current,
       };
 
@@ -96,16 +136,19 @@ export function useFlashcardSession() {
       setPhase('feedback');
 
       timeoutRef.current = window.setTimeout(() => {
+        pressedSetRef.current = new Set();
+
         if (nextResults.length >= sessionLength) {
           setPhase('summary');
           setExercise(null);
           return;
         }
 
-        const nextExercise = createExercise(
-          difficulty,
-          current.expectedPitch,
-        );
+        const nextExercise = createExercise(difficulty, {
+          clefMode,
+          notesPerExercise,
+          avoidPitches: current.expectedPitches,
+        });
         answeredRef.current = false;
         setLastResult(null);
         setExercise(nextExercise);
@@ -113,7 +156,7 @@ export function useFlashcardSession() {
         startedAtRef.current = performance.now();
       }, FEEDBACK_MS);
     },
-    [difficulty, sessionLength],
+    [difficulty, sessionLength, clefMode, notesPerExercise],
   );
 
   const summary: SessionSummary | null = useMemo(() => {
@@ -140,6 +183,12 @@ export function useFlashcardSession() {
     setDifficultyId,
     sessionLength,
     setSessionLength,
+    clefMode,
+    setClefMode,
+    notesPerExercise,
+    setNotesPerExercise,
+    practiceMode,
+    setPracticeMode,
     phase,
     exercise,
     lastResult,

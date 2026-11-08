@@ -16,15 +16,21 @@ export interface DifficultyOption {
   clef: Clef;
 }
 
+/**
+ * Selección de clave de la sesión. Es un ajuste aparte de `DifficultyOption`
+ * porque la clave es ortogonal a la dificultad y tiene rangos propios.
+ */
+export type ClefMode = 'treble' | 'bass' | 'both';
+
 export interface FlashcardExercise {
   id: string;
-  expectedPitch: number;
+  expectedPitches: number[];
   clef: Clef;
 }
 
 export interface ExerciseResult {
   exercise: FlashcardExercise;
-  playedPitch: number;
+  playedPitches: number[];
   result: MatchResult;
   responseMs: number;
 }

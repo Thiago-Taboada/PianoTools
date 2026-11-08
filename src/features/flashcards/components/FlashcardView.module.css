@@ -28,10 +28,58 @@
 }
 
 .paper {
+  position: relative;
   background: linear-gradient(180deg, #f7f1e4 0%, #efe4cc 100%);
   border-radius: 20px;
-  padding: 1rem 1rem 0.5rem;
-  min-height: 250px;
+  padding: 1rem;
+  min-height: 360px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+}
+
+.zoomControls {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  display: flex;
+  gap: 0.4rem;
+  z-index: 1;
+}
+
+.zoomButton {
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid rgba(27, 26, 23, 0.25);
+  background: rgba(255, 255, 255, 0.85);
+  color: #1b1a17;
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.zoomButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.toggle input {
+  margin-top: 0.15rem;
 }
 
 .label {
@@ -39,6 +87,12 @@
   gap: 0.4rem;
   font-size: 0.85rem;
   color: var(--muted);
+}
+
+.help {
+  font-size: 0.78rem;
+  color: var(--muted);
+  line-height: 1.35;
 }
 
 .label select,

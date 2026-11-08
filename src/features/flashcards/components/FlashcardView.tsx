@@ -2,8 +2,13 @@ import { midiToNoteName, midiToSolfege } from '../../../core/music/pitch';
 import {
   DEFAULT_SESSION_LENGTH,
   DIFFICULTIES,
+  getDifficulty,
+  MAX_NOTES,
+  MIN_NOTES,
 } from '../services/exerciseGenerator';
+import type { ClefMode } from '../types';
 import type { useFlashcardSession } from '../hooks/useFlashcardSession';
+import { useStaffZoom } from '../hooks/useStaffZoom';
 import { SessionSummary } from './SessionSummary';
 import { StaffNote } from './StaffNote';
 import styles from './FlashcardView.module.css';
@@ -14,12 +19,24 @@ interface FlashcardViewProps {
   session: Session;
 }
 
+function formatPitches(pitches: number[]): string {
+  return pitches
+    .map((pitch) => `${midiToNoteName(pitch)} / ${midiToSolfege(pitch)}`)
+    .join(' · ');
+}
+
 export function FlashcardView({ session }: FlashcardViewProps) {
   const {
     difficultyId,
     setDifficultyId,
     sessionLength,
     setSessionLength,
+    clefMode,
+    setClefMode,
+    notesPerExercise,
+    setNotesPerExercise,
+    practiceMode,
+    setPracticeMode,
     phase,
     exercise,
     lastResult,
@@ -30,6 +47,8 @@ export function FlashcardView({ session }: FlashcardViewProps) {
   } = session;
 
   const busy = phase === 'waiting' || phase === 'feedback';
+  const { zoom, zoomIn, zoomOut, canZoomIn, canZoomOut } = useStaffZoom();
+  const selectedDifficulty = getDifficulty(difficultyId);
 
   return (
     <div className={styles.layout}>
@@ -49,6 +68,47 @@ export function FlashcardView({ session }: FlashcardViewProps) {
               </option>
             ))}
           </select>
+          <span className={styles.help}>{selectedDifficulty.description}</span>
+          <span className={styles.help}>
+            El rango aplica en clave de sol; en clave de fa el rango lo decide la
+            clave.
+          </span>
+        </label>
+        <label className={styles.label}>
+          Clave
+          <select
+            value={clefMode}
+            disabled={busy}
+            onChange={(event) =>
+              setClefMode(event.target.value as ClefMode)
+            }
+          >
+            <option value="treble">Clave de sol</option>
+            <option value="bass">Clave de fa</option>
+            <option value="both">Ambas</option>
+          </select>
+        </label>
+        <label className={styles.label}>
+          Notas por ejercicio: {notesPerExercise}
+          <input
+            type="range"
+            min={MIN_NOTES}
+            max={MAX_NOTES}
+            step={1}
+            disabled={busy}
+            value={notesPerExercise}
+            onChange={(event) =>
+              setNotesPerExercise(Number(event.target.value))
+            }
+          />
+        </label>
+        <label className={styles.toggle}>
+          <input
+            type="checkbox"
+            checked={practiceMode}
+            onChange={(event) => setPracticeMode(event.target.checked)}
+          />
+          Modo práctica (resalta teclas y digitación sugerida)
         </label>
         <label className={styles.label}>
           Ejercicios por sesión
@@ -91,12 +151,36 @@ export function FlashcardView({ session }: FlashcardViewProps) {
         ) : (
           <>
             <div className={styles.paper}>
+              <div className={styles.zoomControls}>
+                <button
+                  type="button"
+                  className={styles.zoomButton}
+                  aria-label="Reducir partitura"
+                  disabled={!canZoomOut}
+                  onClick={zoomOut}
+                >
+                  −
+                </button>
+                <button
+                  type="button"
+                  className={styles.zoomButton}
+                  aria-label="Aumentar partitura"
+                  disabled={!canZoomIn}
+                  onClick={zoomIn}
+                >
+                  +
+                </button>
+              </div>
               {exercise ? (
-                <StaffNote pitch={exercise.expectedPitch} clef={exercise.clef} />
+                <StaffNote
+                  pitches={exercise.expectedPitches}
+                  clef={exercise.clef}
+                  zoom={zoom}
+                />
               ) : (
                 <p className={styles.hint}>
-                  Pulsa Empezar para ver una nota en clave de sol. Tócala en el
-                  teclado MIDI o usa A–K en el ordenador.
+                  Pulsa Empezar para ver una o varias notas en el pentagrama.
+                  Tócalas en el teclado MIDI o usa A–K en el ordenador.
                 </p>
               )}
             </div>
@@ -110,10 +194,11 @@ export function FlashcardView({ session }: FlashcardViewProps) {
                   }
                 >
                   {lastResult.result === 'correct' ? 'Correcto' : 'Incorrecto'} ·{' '}
-                  {midiToNoteName(lastResult.exercise.expectedPitch)} /{' '}
-                  {midiToSolfege(lastResult.exercise.expectedPitch)}
+                  {formatPitches(lastResult.exercise.expectedPitches)}
                   {lastResult.result === 'incorrect'
-                    ? ` · tocaste ${midiToNoteName(lastResult.playedPitch)}`
+                    ? ` · tocaste ${lastResult.playedPitches
+                        .map((pitch) => midiToNoteName(pitch))
+                        .join(' · ')}`
                     : ''}
                 </span>
               ) : phase === 'waiting' ? (

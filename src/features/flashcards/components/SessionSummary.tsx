@@ -29,16 +29,27 @@ export function SessionSummary({ summary }: SessionSummaryProps) {
         {summary.results.map((item, index) => (
           <li key={item.exercise.id}>
             <span>
-              {index + 1}. {midiToNoteName(item.exercise.expectedPitch)} ·{' '}
-              {midiToSolfege(item.exercise.expectedPitch)}
+              {index + 1}.{' '}
+              {item.exercise.expectedPitches
+                .map(
+                  (pitch) =>
+                    `${midiToNoteName(pitch)} · ${midiToSolfege(pitch)}`,
+                )
+                .join(' + ')}
             </span>
             <span className={item.result === 'correct' ? styles.ok : styles.bad}>
               {item.result === 'correct' ? 'Correcto' : 'Incorrecto'} · tocaste{' '}
-              {midiToNoteName(item.playedPitch)}
+              {item.playedPitches
+                .map((pitch) => midiToNoteName(pitch))
+                .join(' + ')}
             </span>
           </li>
         ))}
       </ol>
+      <p className={styles.note}>
+        La digitación del modo práctica es una sugerencia aproximada: mano
+        derecha en clave de sol y mano izquierda en clave de fa.
+      </p>
     </div>
   );
 }
